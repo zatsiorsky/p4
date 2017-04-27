@@ -85,9 +85,12 @@ class Learner(object):
 		self.last_reward = reward
 
 	def choose_action(self, state, thresh = 0.08):
-		# epsilon = 0.5 * np.exp(-self.n_iters / float(1000))
-		epsilon = 0.2
-		
+
+		if state[1] > 0:
+			return 0
+
+		epsilon = 0.5 * np.exp(-self.n_iters / float(500))
+
 		self.n_iters += 1
 		# With probability epsilon, explore
 		if npr.uniform() < epsilon:
@@ -109,9 +112,7 @@ class Learner(object):
 		dx = state["tree"]["dist"] / self.md
 
 		# Vertical distance from bottom of monkey to bottom of tree
-		dy = (state["monkey"]["bot"] - state["tree"]["bot"]) / self.my
-
-		dtop = state["monkey"]["top"] / self.my
+		dy = (state["monkey"]["top"] - state["tree"]["top"]) / self.my
 
 		# Velocity of the monkey
 		vel = state["monkey"]["vel"]
@@ -128,7 +129,7 @@ class Learner(object):
 		if update_vel:
 			self.last_vel = vel
 
-		return (dx, dy, gravity)
+		return (dx, dy, vel > 0, gravity)
 
 
 
