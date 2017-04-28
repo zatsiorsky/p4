@@ -35,7 +35,7 @@ class SwingyMonkey:
         self.horz_speed    = 25
         self.impulse       = 15
         #self.gravity       = npr.choice([1,4])
-        self.gravity       = npr.choice([4])
+        self.gravity       = npr.choice([1,4])
         self.tree_mean     = 5
         self.tree_gap      = 200
         self.tree_offset   = -300
@@ -86,6 +86,7 @@ class SwingyMonkey:
         self.hook  = self.screen_width
         self.score = 0
         self.iter  = 0
+        self.death = None
 
     def get_state(self):
         '''Returns a snapshot of the current game state, computed
@@ -221,6 +222,10 @@ class SwingyMonkey:
 
         # If failed, play sound and exit.  Also, assign rewards.
         if edge_hit:
+            if monkey_bot > self.screen_height:
+                self.death = "off_bot"
+            if monkey_top < 0:
+                self.death = "off_top"
             if self.sound:
                 ch = self.screech_snd.play()
                 while ch.get_busy():
@@ -231,6 +236,10 @@ class SwingyMonkey:
                 self.action_fn(self.get_state())
             return False
         if tree_hit:
+            if monkey_top > trunk_top:
+                self.death = "tree_bot"
+            if monkey_bot < trunk_bot:
+                self.death = "tree_top"
             if self.sound:
                 ch = self.screech_snd.play()
                 while ch.get_busy():

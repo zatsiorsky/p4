@@ -1,6 +1,10 @@
 # Imports.
 import numpy as np
 import numpy.random as npr
+import pandas as pd
+import os.path
+import datetime
+from itertools import product
 
 from SwingyMonkey import SwingyMonkey
 
@@ -12,7 +16,7 @@ class Learner(object):
 	This agent jumps randomly.
 	'''
 
-	def __init__(self, eta = 0.2, gamma = 1, epsilon = 0.2):
+	def __init__(self, eta = 0.2, gamma = 1, epsilon = 0.2, mx = 50, my = 25, ms = 1):
 		self.n_iters = 0
 		self.last_state  = None
 		self.last_action = None
@@ -20,9 +24,10 @@ class Learner(object):
 		# Store the last velocity independent of the state
 		self.last_vel = None
 
-		# Multipliers for horizontal and vertical distance
-		self.md = 50
-		self.my = 25
+		# Multipliers for horizontal and vertical distance + gravity
+		self.mx = mx
+		self.my = my
+		self.ms = ms
 
 		# This is the cutoff for high/low gravity
 		self.high_g_thresh = 2
@@ -38,7 +43,7 @@ class Learner(object):
 		self.gamma = gamma
 
 		# Exploration rate
-		self.epsilon = 0.2
+		self.epsilon = epsilon
 
 	def reset(self):
 		self.last_state  = None
@@ -109,22 +114,24 @@ class Learner(object):
 
 	def transform_state(self, state, update_vel = True):
 		# Rescaled horizontal distance to next tree 
-		dx = state["tree"]["dist"] / self.md
+		dx = state["tree"]["dist"] / self.mx
 
 		# Vertical distance from bottom of monkey to bottom of tree
 		dy = (state["monkey"]["top"] - state["tree"]["top"]) / self.my
 
 		# Velocity of the monkey
-		vel = state["monkey"]["vel"]
+		vel = state["monkey"]["vel"] / self.ms
 
 		# Determine if there is high or low gravity
 		# For the first time step, randomly choose high or low
 		if self.last_vel is None:
 			gravity = npr.choice([0, 1])
-		elif np.abs(vel - self.last_vel) > self.high_g_thresh:
+		elif np.abs(state["monkey"]["vel"] - self.last_vel) > self.high_g_thresh:
 			gravity = 1
+
 		else:
 			gravity = 0
+
 
 		if update_vel:
 			self.last_vel = vel
@@ -133,12 +140,14 @@ class Learner(object):
 
 
 
-
-def run_games(learner, hist, iters = 100, t_len = 100):
+def run_games(learner, iters = 100, t_len = 100):
 	'''
 	Driver function to simulate learning by having the agent play a sequence of games.
 	'''
+	# intialize df 
+	df = pd.DataFrame(columns = ["gravity", "score", "death"]) 
 	
+	# run iters games
 	for ii in range(iters):
 		# Make a new monkey object.
 		swing = SwingyMonkey(sound=False,                  # Don't play sounds.
@@ -153,26 +162,70 @@ def run_games(learner, hist, iters = 100, t_len = 100):
 			pass
 		
 		# Save score history.
-		hist.append(swing.score)
+		df.loc[len(df)] = [swing.gravity, swing.score, swing.death]
 
 		# Reset the state of the learner.
 		learner.reset()
-		
-	return
 
+
+	return df
+
+def stats(df):
+	"""Helper function to get stats from df"""
+	vals = [df.score.mean(), df.score.quantile(0.5), 
+	        df.score.quantile(0.8), df.score.max(), 
+	        df.death.mode()[0]]
+	return vals
 
 if __name__ == '__main__':
+	etas = [1, 0.5, 0.1, 0.01]
+	gammas = [1, 0.5] 
+	epsilons = [.9, .5, 0.1, 0.01]
+	mds = [60, 50, 40, 30]
+	mys = [35, 25, 15, 10]
+	mss = [1, 2, 3]
+	param_list = [etas, gammas, epsilons, mds, mys, mss]
+	params = product(*param_list)
 
-	# Select agent.
-	agent = Learner()
+	now = datetime.datetime.now()
+	print "Starting time: {}".format(str(now))
 
-	# Empty list to save history.
-	hist = []
+	i = 0
+	for eta, gamma, epsilon, md, my, ms in params: 
+		
+		### check that test hasn't been run
+		# initialize name 
+		params = [eta, gamma, epsilon, md, my, ms]
+		name = "_".join(map(str, params))
 
-	# Run games. 
-	run_games(agent, hist, 100, 1)
+		# initialize logfile number
+		if os.path.isfile('csvs/' + name  + ".csv"):
+			continue
 
-	# Save history. 
-	np.save('hist',np.array(hist))
+		### run games
+		# Select agent.
+		agent = Learner(eta, gamma, epsilon, md, my, ms)
 
+		# Run games. 
+		df = run_games(agent, 100, 0)
 
+		### log results
+		# log all individual scores in csv in folder 
+		df.to_csv('csvs/' + name + ".csv", index=0)
+	
+		# get all summary stats
+		full_stats = stats(df)
+		_30_above = stats(df[30:])
+		_30_above_high = stats(df[30:][df[30:].gravity == 1])
+		_30_above_low = stats(df[30:][df[30:].gravity == 4])
+		combined = params + full_stats + _30_above + _30_above_high + _30_above_low
+		
+		# append summary stats to grid_csv
+		with open("grid_results.csv", "a") as myfile:
+			myfile.write(','.join(map(str,combined)) + "\n")
+
+		# shout at command line
+		i += 1
+		if i % 25 == 0:
+			elapsed = datetime.datetime.now() - now
+			print "Combos: {},  Elapsed time: {}".format(i, str(elapsed))
