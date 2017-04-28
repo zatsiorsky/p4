@@ -181,8 +181,8 @@ if __name__ == '__main__':
 	etas = [1, 0.5, 0.1, 0.01]
 	gammas = [1, 0.5] 
 	epsilons = [.9, .5, 0.1, 0.01]
-	mds = [60, 50, 40, 30]
-	mys = [35, 25, 15, 10]
+	mds = [100, 80, 60, 50, 40, 30]
+	mys = [50, 35, 25, 15, 10]
 	mss = [1, 2, 3]
 	param_list = [etas, gammas, epsilons, mds, mys, mss]
 	params = product(*param_list)
@@ -206,8 +206,13 @@ if __name__ == '__main__':
 		# Select agent.
 		agent = Learner(eta, gamma, epsilon, md, my, ms)
 
-		# Run games. 
-		df = run_games(agent, 100, 0)
+		# Run games, account for bug in distro code
+		while True:
+			try:
+				df = run_games(agent, 100, 0)
+			except UnboundLocalError:
+				continue
+			break
 
 		### log results
 		# log all individual scores in csv in folder 
@@ -228,4 +233,4 @@ if __name__ == '__main__':
 		i += 1
 		if i % 25 == 0:
 			elapsed = datetime.datetime.now() - now
-			print "Combos: {},  Elapsed time: {}".format(i, str(elapsed))
+			print "Combos : {},  Elapsed time: {}".format(i, str(elapsed))
