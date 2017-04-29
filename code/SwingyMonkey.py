@@ -265,7 +265,6 @@ class SwingyMonkey:
                 self.reward_fn(self.tree_reward)
             else:
                 self.reward_fn(0.0)            
-                
         #############################################################################
         # Wait just a bit.
         #pg.time.delay(self.tick_length)
