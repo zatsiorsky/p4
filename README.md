@@ -1,0 +1,9 @@
+# p4
+
+To run this, just use the stub file, all of our code is there. The stub_final is also set up to perform 100 iterations of 100 games and will record the stats of every 100 games.
+
+Other files of interest in this repo:
+stub_one_param_tuning - used to tune one parameter at a time, does multipled iterations with each param value
+stub_mult_param_tuning - used to tune a grid of params
+
+SwingyMonkey_no_render - version of file with all rendering commented out
